@@ -235,6 +235,24 @@ class Application:
                 ),
                 send_text_callback=self._send_text_tts
             )
+        elif mode == 'server':
+            # 导入无头显示模式
+            from src.display.headless_display import HeadlessDisplay
+            self.display = HeadlessDisplay()
+            logger.debug("已创建服务器无头显示界面")
+            # 注意：服务器模式需要设置press_callback和release_callback用于API控制
+            self.display.set_callbacks(
+                press_callback=self.start_listening,
+                release_callback=self.stop_listening,
+                status_callback=self._get_status_text,
+                text_callback=self._get_current_text,
+                emotion_callback=self._get_current_emotion,
+                auto_callback=self.toggle_chat_state,
+                abort_callback=lambda: self.abort_speaking(
+                    AbortReason.WAKE_WORD_DETECTED
+                ),
+                send_text_callback=self._send_text_tts
+            )
         else:
             self.display = cli_display.CliDisplay()
             logger.debug("已创建CLI显示界面")
@@ -1171,7 +1189,7 @@ class Application:
         from src.iot.things.lamp import Lamp
         from src.iot.things.speaker import Speaker
         from src.iot.things.music_player import MusicPlayer
-        from src.iot.things.CameraVL.Camera import Camera
+        # from src.iot.things.CameraVL.Camera import Camera
         # from src.iot.things.query_bridge_rag import QueryBridgeRAG
         # from src.iot.things.temperature_sensor import TemperatureSensor
         # 导入Home Assistant设备控制类
@@ -1187,7 +1205,7 @@ class Application:
         thing_manager.add_thing(Speaker())
         thing_manager.add_thing(MusicPlayer())
         # 默认不启用以下示例
-        thing_manager.add_thing(Camera())
+        # thing_manager.add_thing(Camera())
         # thing_manager.add_thing(QueryBridgeRAG())
         # thing_manager.add_thing(TemperatureSensor())
 
