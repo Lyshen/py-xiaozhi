@@ -3,6 +3,7 @@ import logging
 import sys
 import signal
 import io
+import time
 from src.application import Application
 from src.utils.logging_config import setup_logging, get_logger
 
@@ -22,9 +23,9 @@ def parse_args():
     # 添加界面模式参数
     parser.add_argument(
         '--mode', 
-        choices=['gui', 'cli'],
+        choices=['gui', 'cli', 'server'],
         default='gui',
-        help='运行模式：gui(图形界面) 或 cli(命令行)'
+        help='运行模式：gui(图形界面), cli(命令行) 或 server(Web服务器)'
     )
     
     # 添加协议选择参数
@@ -65,8 +66,35 @@ def main():
             protocol=args.protocol
         )
 
+        # 如果是服务器模式，启动Web服务器
+        if args.mode == 'server':
+            try:
+                # 导入Web服务器模块
+                from src.web_server import run_server
+                import threading
+                
+                # 创建并启动Web服务器线程
+                port = 5000
+                server_thread = threading.Thread(
+                    target=run_server, 
+                    kwargs={"host": "0.0.0.0", "port": port},
+                    daemon=True
+                )
+                server_thread.start()
+                logger.info(f"Web服务器已启动，访问 http://localhost:{port} 查看API文档")
+                logger.info("服务器正在运行中，按Ctrl+C退出...")
+                
+                # 防止程序退出
+                try:
+                    while True:
+                        time.sleep(1)
+                except KeyboardInterrupt:
+                    logger.info("接收到退出信号，服务器即将关闭...")
+            except Exception as e:
+                logger.error(f"启动Web服务器失败: {e}", exc_info=True)
+                return 1
         # 如果是GUI模式且使用了PyQt界面，启动Qt事件循环
-        if args.mode == 'gui':
+        elif args.mode == 'gui':
             # 获取QApplication实例并运行事件循环
             try:
                 from PyQt5.QtWidgets import QApplication
