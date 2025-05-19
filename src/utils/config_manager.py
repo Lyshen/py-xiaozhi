@@ -272,6 +272,17 @@ class ConfigManager:
                 print("\nWebSocket配置信息:")
                 print(f"URL: {self.get_config('SYSTEM_OPTIONS.NETWORK.WEBSOCKET_URL')}")
                 print(f"Token: {self.get_config('SYSTEM_OPTIONS.NETWORK.WEBSOCKET_ACCESS_TOKEN')[:10]}...")
+            
+            # 强制覆盖WebSocket URL为本地地址
+            # 使用localhost或127.0.0.1而不是Docker容器内部IP
+            # local_websocket_url = "ws://127.0.0.1:8000/xiaozhi/v1/"
+            local_websocket_url = "ws://10.212.61.253:8000/xiaozhi/v1/"
+            self.update_config("SYSTEM_OPTIONS.NETWORK.WEBSOCKET_URL", local_websocket_url)
+            self.logger.info(f"已覆盖为本地WebSocket URL: {local_websocket_url}")
+            print(f"使用本地WebSocket URL: {local_websocket_url}")
+            
+            # 确保访问Token有效
+            self.update_config("SYSTEM_OPTIONS.NETWORK.WEBSOCKET_ACCESS_TOKEN", "test-token")
 
             # 确定使用哪个版本的激活协议
             if activation_version_setting in ["v1", "1"]:

@@ -33,19 +33,16 @@ class WebsocketProtocol(Protocol):
             # 在连接时创建 Event，确保在正确的事件循环中
             self.hello_received = asyncio.Event()
 
-            # 建立WebSocket连接 (兼容不同Python版本的写法)
-            try:
-                # 新的写法 (在Python 3.11+版本中)
-                self.websocket = await websockets.connect(
-                    uri=self.WEBSOCKET_URL, 
-                    additional_headers=self.HEADERS
-                )
-            except TypeError:
-                # 旧的写法 (在较早的Python版本中)
-                self.websocket = await websockets.connect(
-                    self.WEBSOCKET_URL, 
-                    extra_headers=self.HEADERS
-                )
+            # 建立WebSocket连接
+            # 使用统一的方式，只用extra_headers参数
+            logger.info(f"尝试连接到WebSocket服务器: {self.WEBSOCKET_URL}")
+            self.websocket = await websockets.connect(
+                self.WEBSOCKET_URL, 
+                extra_headers=self.HEADERS,
+                open_timeout=10,  # 明确设置超时时间
+                close_timeout=5,
+                max_size=10 * 1024 * 1024  # 增加最大消息大小
+            )
 
             # 启动消息处理循环
             asyncio.create_task(self._message_handler())
@@ -81,6 +78,34 @@ class WebsocketProtocol(Protocol):
 
         except Exception as e:
             logger.error(f"WebSocket连接失败: {e}")
+            # 添加更详细的异常信息和堆栈跟踪
+            logger.error(f"异常类型: {type(e).__name__}")
+            logger.error(f"异常详情: {str(e)}")
+            import traceback
+            logger.error(f"堆栈跟踪: {traceback.format_exc()}")
+            
+            # 检查网络连通性
+            import socket
+            try:
+                # 从URL解析主机和端口
+                from urllib.parse import urlparse
+                parsed_url = urlparse(self.WEBSOCKET_URL)
+                host = parsed_url.hostname
+                port = parsed_url.port or (443 if parsed_url.scheme == 'wss' else 80)
+                
+                # 尝试连接
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(5)
+                logger.info(f"尝试连接到 {host}:{port}")
+                connection_result = s.connect_ex((host, port))
+                if connection_result == 0:
+                    logger.info(f"TCP连接到 {host}:{port} 成功，但WebSocket协议握手失败")
+                else:
+                    logger.error(f"TCP连接到 {host}:{port} 失败，错误码: {connection_result}")
+                s.close()
+            except Exception as network_error:
+                logger.error(f"网络诊断失败: {network_error}")
+            
             if self.on_network_error:
                 self.on_network_error(f"无法连接服务: {str(e)}")
             return False
